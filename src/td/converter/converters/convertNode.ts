@@ -32,6 +32,7 @@ module td
         }
     }
 
+    var reportedUnhandled = {};
 
     /**
      * Analyze the given node and create a suitable reflection.
@@ -54,7 +55,8 @@ module td
                 return visitModuleDeclaration(context, <ts.ModuleDeclaration>node);
             case ts.SyntaxKind.VariableStatement:
                 return visitVariableStatement(context, <ts.VariableStatement>node);
-            case ts.SyntaxKind.Property:
+            case ts.SyntaxKind.PropertySignature:
+            case ts.SyntaxKind.PropertyDeclaration:
             case ts.SyntaxKind.PropertyAssignment:
             case ts.SyntaxKind.VariableDeclaration:
                 return visitVariableDeclaration(context, <ts.VariableDeclaration>node);
@@ -65,7 +67,8 @@ module td
             case ts.SyntaxKind.Constructor:
             case ts.SyntaxKind.ConstructSignature:
                 return visitConstructor(context, <ts.ConstructorDeclaration>node);
-            case ts.SyntaxKind.Method:
+            case ts.SyntaxKind.MethodSignature:
+            case ts.SyntaxKind.MethodDeclaration:
             case ts.SyntaxKind.FunctionDeclaration:
                 return visitFunctionDeclaration(context, <ts.MethodDeclaration>node);
             case ts.SyntaxKind.GetAccessor:
@@ -88,8 +91,15 @@ module td
                 return visitExportAssignment(context, <ts.ExportAssignment>node);
             case ts.SyntaxKind.TypeAliasDeclaration:
                 return visitTypeAliasDeclaration(context, <ts.TypeAliasDeclaration>node);
+            case ts.SyntaxKind.EmptyStatement:
+            case ts.SyntaxKind.ExpressionStatement:
+                //console.log('Ignoring: ' + node.kind+' '+node);
+                return null;
             default:
-                // console.log('Unhandeled: ' + node.kind);
+                if (null == reportedUnhandled[node.kind]) {
+                    console.log('Unhandled: ' + node.kind);
+                    reportedUnhandled[node.kind] = 'been there';
+                }
                 return null;
         }
     }
@@ -137,7 +147,7 @@ module td
         var options = context.getOptions();
         context.withSourceFile(node, () => {
             if (options.mode == SourceFileMode.Modules) {
-                result = createDeclaration(context, node, ReflectionKind.ExternalModule, node.filename);
+                result = createDeclaration(context, node, ReflectionKind.ExternalModule, node.fileName);
                 context.withScope(result, () => {
                     visitBlock(context, node);
                     result.setFlag(ReflectionFlag.Exported);
@@ -198,6 +208,7 @@ module td
                 node.members.forEach((member) => {
                     visit(context, member);
                 });
+                //console.log("done visiting class ", reflection);
             }
 
             var baseType = ts.getClassBaseTypeNode(node);
@@ -248,9 +259,13 @@ module td
 
         context.withScope(reflection, node.typeParameters, () => {
             if (node.members) {
+                //console.log('visiting interface members '+node.name.text);
                 node.members.forEach((member, isInherit) => {
+                    //console.log('visiting interface member '+(member.name && member.name['text']), member);
+                    //console.log('visiting interface member '+(member.name && member.name['text']), member.kind);
                     visit(context, member);
                 });
+                //console.log("done visiting node ", reflection);
             }
 
             var baseTypes = ts.getInterfaceBaseTypeNodes(node);
@@ -283,8 +298,8 @@ module td
      * @return The resulting reflection or NULL.
      */
     function visitVariableStatement(context:Context, node:ts.VariableStatement):Reflection {
-        if (node.declarations) {
-            node.declarations.forEach((variableDeclaration) => {
+        if (node.declarationList && node.declarationList.declarations) {
+            node.declarationList.declarations.forEach((variableDeclaration) => {
                 visitVariableDeclaration(context, variableDeclaration);
             });
         }
@@ -432,7 +447,6 @@ module td
         var kind = scope.kind & ReflectionKind.ClassOrInterface ? ReflectionKind.Method : ReflectionKind.Function;
         var hasBody = !!node.body;
         var method = createDeclaration(context, <ts.Node>node, kind);
-
         context.withScope(method, () => {
             if (!hasBody || !method.signatures) {
                 var signature = createSignature(context, <ts.SignatureDeclaration>node, method.name, ReflectionKind.CallSignature);
@@ -574,7 +588,7 @@ module td
 
 
     function visitExportAssignment(context:Context, node:ts.ExportAssignment):Reflection {
-        var type = context.getTypeAtLocation(node.exportName);
+        var type = context.getTypeAtLocation(node.expression);
         if (type && type.symbol) {
             var project = context.project;
             type.symbol.declarations.forEach((declaration) => {

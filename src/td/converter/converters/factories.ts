@@ -18,13 +18,17 @@ module td
 
         // Ensure we have a name for the reflection
         if (!name) {
-            if (!node.symbol) return null;
+            if (!node.symbol) {
+                //console.log("can't create declaration for nameless node ", node);
+                return null;
+            }
             name = node.symbol.name;
         }
 
         // Test whether the node is private, when inheriting ignore private members
         var isPrivate = !!(node.flags & ts.NodeFlags.Private);
         if (context.isInherit && isPrivate) {
+            //console.log("ignoring private node processing inheritance ", node);
             return null;
         }
 
@@ -52,9 +56,11 @@ module td
                 children.push(child);
                 context.registerReflection(child, node);
             }
+            //console.log("created child ", node, child, children);
         } else {
             // Merge the existent reflection with the given node
             child = mergeDeclarations(context, child, node, kind);
+            //console.log("re-used existing child ", node, child, children);
         }
 
         // If we have a reflection, trigger the corresponding event

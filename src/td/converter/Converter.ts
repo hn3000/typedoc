@@ -275,8 +275,8 @@ module td
             }
 
             var program = ts.createProgram(fileNames, this.application.compilerOptions, this);
-            var checker = program.getTypeChecker(true);
-            var context = new Context(this, fileNames, checker);
+            var checker = program.getTypeChecker();
+            var context = new Context(this, fileNames, program, checker);
 
             this.dispatch(Converter.EVENT_BEGIN, context);
 
@@ -300,13 +300,28 @@ module td
          */
         private compile(context:Context):ts.Diagnostic[] {
             var checker = context.checker;
-            var program = checker.getProgram();
+            var program = context.program;
 
-            program.getSourceFiles().forEach((sourceFile) => {
-                visit(context, sourceFile);
-            });
+            // First get any syntactic errors.
+            var diagnostics = program.getSyntacticDiagnostics();
 
-            return program.getDiagnostics().concat(checker.getDiagnostics());
+            // If we didn't have any syntactic errors, then also try getting the global and
+            // semantic errors.
+            if (diagnostics.length === 0) {
+                diagnostics = program.getGlobalDiagnostics();
+
+                if (diagnostics.length === 0) {
+                    diagnostics = program.getSemanticDiagnostics();
+                }
+            }
+
+            if (diagnostics.length == 0) {
+                program.getSourceFiles().forEach((sourceFile) => {
+                    visit(context, sourceFile);
+                });
+            }
+
+            return diagnostics;
         }
 
 
@@ -367,7 +382,8 @@ module td
                 text = "";
             }
 
-            return text !== undefined ? ts.createSourceFile(filename, text, languageVersion, /*version:*/ "0") : undefined;
+            //createSourceFile(fileName: string, sourceText: string, languageVersion: ScriptTarget, setParentNodes?: boolean)
+            return text !== undefined ? ts.createSourceFile(filename, text, languageVersion, true) : undefined;
         }
 
 
@@ -378,7 +394,7 @@ module td
          *
          * @returns The full path of the default library.
          */
-        getDefaultLibFilename():string {
+        getDefaultLibFileName():string {
             var lib = this.getDefaultLib();
             var path = ts.getDirectoryPath(ts.normalizePath(td.tsPath));
             return Path.join(path, 'bin', lib);
