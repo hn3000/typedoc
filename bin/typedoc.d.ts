@@ -705,6 +705,10 @@ declare module td {
          */
         fileNames: string[];
         /**
+         * The Program instance returned by the TypeScript compiler.
+         */
+        program: ts.Program;
+        /**
          * The TypeChecker instance returned by the TypeScript compiler.
          */
         checker: ts.TypeChecker;
@@ -759,7 +763,7 @@ declare module td {
          * @param fileNames  A list of all files that have been passed to the TypeScript compiler.
          * @param checker  The TypeChecker instance returned by the TypeScript compiler.
          */
-        constructor(converter: Converter, fileNames: string[], checker: ts.TypeChecker);
+        constructor(converter: Converter, fileNames: string[], program: ts.Program, checker: ts.TypeChecker);
         /**
          * Return the current TypeDoc options object.
          */
@@ -1035,7 +1039,7 @@ declare module td {
          *
          * @returns The full path of the default library.
          */
-        getDefaultLibFilename(): string;
+        getDefaultLibFileName(): string;
         /**
          * Return the full path of the current directory.
          *
