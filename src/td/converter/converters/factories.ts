@@ -38,6 +38,11 @@ module td
             isStatic = true;
         }
 
+        var isExported = !!(node.flags & ts.NodeFlags.Export);
+        if (node.kind == ts.SyntaxKind.VariableDeclaration && node.parent && node.parent.parent) {
+            isExported = !!(node.parent.parent.flags & ts.NodeFlags.Export);
+        }
+
         // Check if we already have a child with the same name and static flag
         var child:DeclarationReflection;
         var children = container.children = container.children || [];
@@ -50,6 +55,7 @@ module td
             child = new DeclarationReflection(container, name, kind);
             child.setFlag(ReflectionFlag.Static, isStatic);
             child.setFlag(ReflectionFlag.Private, isPrivate);
+            if (isExported) child.setFlag(ReflectionFlag.Exported, isExported);
             child = setupDeclaration(context, child, node);
 
             if (child) {

@@ -309,6 +309,10 @@ module td
 
             if (node.parent && node.parent.kind == ts.SyntaxKind.VariableStatement) {
                 target = node.parent;
+            } else if (node.parent && node.parent.kind == ts.SyntaxKind.VariableDeclarationList) {
+                if (node.parent.parent && node.parent.parent.kind == ts.SyntaxKind.VariableStatement) {
+                    target = node.parent.parent;
+                }
             }
 
             var comments = ts.getJsDocComments(target, sourceFile);
