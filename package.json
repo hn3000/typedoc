@@ -28,7 +28,7 @@
     "node": ">=0.10.0"
   },
   "dependencies": {
-    "typescript": "1.4.x",
+    "typescript": "git+https://github.com/hn3000/TypeScript.git",
     "typedoc-default-themes": "^0.2.5",
     "fs-extra": "^0.16.4",
     "minimatch": "^2.0.1",
